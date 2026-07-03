@@ -1,7 +1,7 @@
 // ==========================================
         // CONFIGURAÇÃO DA API - COLOQUE SUA CHAVE AQUI!
         // ==========================================
-        const API_KEY = 'SUA_API_KEY_AQUI'; 
+        const API_KEY = a6e95254254e0bf24eb933b2b1fbf262; 
         const BASE_URL = 'https://api.themoviedb.org/3';
         const IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
 
@@ -24,7 +24,7 @@
             const query = searchInput.value.trim();
             if (!query) return;
 
-            if (API_KEY === 'SUA_API_KEY_AQUI') {
+            if (API_KEY === a6e95254254e0bf24eb933b2b1fbf262) {
                 alert('Por favor, configure sua chave da API do TMDB no código!');
                 return;
             }
