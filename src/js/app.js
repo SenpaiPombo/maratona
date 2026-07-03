@@ -5,61 +5,44 @@ const API_KEY = 'a6e95254254e0bf24eb333b2b1fbf262';
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_URL = 'https://image.tmdb.org/t/p/w500';
 
-// Carrega as séries salvas no LocalStorage ou começa com uma lista vazia
-let myShows = JSON.parse(localStorage.getItem('api_tv_time_data')) || [];
+// Usaremos uma nova chave de armazenamento para não misturar com o progresso antigo
+let myShows = JSON.parse(localStorage.getItem('maratona_tv_time_v2')) || [];
 
-// Elementos do DOM
 const myShowsContainer = document.getElementById('my-shows-container');
 const searchInput = document.getElementById('search-input');
 const searchBtn = document.getElementById('search-btn');
 const searchResultsSection = document.getElementById('search-results-section');
 const searchResultsContainer = document.getElementById('search-results-container');
 
-// --- EVENTOS (LISTENERS) ---
-
-// Dispara a busca ao clicar no botão
 searchBtn.addEventListener('click', searchShow);
-
-// Dispara a busca ao apertar 'Enter' dentro do campo de texto
 searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchShow();
 });
 
-// --- FUNÇÃO 1: BUSCAR SÉRIE NA API ---
+// BUSCAR SÉRIE
 async function searchShow() {
     const query = searchInput.value.trim();
     if (!query) return;
 
-    if (API_KEY === 'a6e95254254e0bf24eb333b2b1fbf262') {
-        alert('Por favor, configure sua chave da API do TMDB no arquivo app.js!');
-        return;
-    }
-
     try {
         const response = await fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&language=pt-BR&query=${encodeURIComponent(query)}`);
         const data = await response.json();
-        
         renderSearchResults(data.results);
     } catch (error) {
         console.error("Erro ao buscar série:", error);
-        alert("Erro ao conectar com o serviço do TMDB.");
     }
 }
 
-// Renderiza na tela os cards encontrados na busca
 function renderSearchResults(results) {
     searchResultsContainer.innerHTML = '';
-    
     if (results.length === 0) {
         searchResultsContainer.innerHTML = '<p style="color:var(--text-secondary); padding: 10px;">Nenhuma série encontrada.</p>';
         searchResultsSection.style.display = 'block';
         return;
     }
 
-    // Pega as primeiras 5 opções mais relevantes encontradas
     results.slice(0, 5).forEach(show => {
         const posterPath = show.poster_path ? `${IMAGE_URL}${show.poster_path}` : 'https://via.placeholder.com/150x200?text=Sem+Foto';
-        // Limpa aspas simples do nome para não quebrar o parâmetro do HTML do botão
         const cleanName = show.name.replace(/'/g, "\\'");
 
         const item = document.createElement('div');
@@ -71,78 +54,130 @@ function renderSearchResults(results) {
         `;
         searchResultsContainer.appendChild(item);
     });
-
     searchResultsSection.style.display = 'block';
 }
 
-// --- FUNÇÃO 2: ADICIONAR SÉRIE À MINHA LISTA ---
+// ADICIONAR SÉRIE (Começando no S01E01)
 async function addShowToList(id, name, poster) {
-    // Evita duplicados na lista do usuário
     if (myShows.some(s => s.id === id)) {
         alert("Esta série já está na sua lista!");
         return;
     }
 
-    try {
-        // Busca os detalhes específicos da série para conseguir o número total exato de episódios
-        const response = await fetch(`${BASE_URL}/tv/${id}?api_key=${API_KEY}&language=pt-BR`);
-        const details = await response.json();
-        
-        const totalEpisodes = details.number_of_episodes || 0;
+    const newShow = {
+        id: id,
+        title: name,
+        poster: poster,
+        currentSeason: 1,
+        currentEpisode: 1,
+        episodeName: "Carregando informações...",
+        isCompleted: false
+    };
 
-        const newShow = {
-            id: id,
-            title: name,
-            poster: poster,
-            totalEpisodes: totalEpisodes,
-            currentEpisode: 0
-        };
-
-        myShows.push(newShow);
-        saveData();
-        renderMyShows();
-        
-        // Limpa a busca após adicionar com sucesso
-        searchResultsSection.style.display = 'none';
-        searchInput.value = '';
-    } catch (error) {
-        console.error("Erro ao obter detalhes da série:", error);
-        alert("Não foi possível carregar os detalhes da série.");
-    }
+    myShows.push(newShow);
+    saveData();
+    
+    // Busca o nome do primeiro episódio imediatamente
+    await fetchEpisodeDetails(newShow);
+    
+    renderMyShows();
+    searchResultsSection.style.display = 'none';
+    searchInput.value = '';
 }
 
-// --- FUNÇÃO 3: RENDERIZAR MINHA LISTA PRINCIPAL ---
+// BUSCA DETALHES DO EPISÓDIO ATUAL (Nome e se ele existe)
+async function fetchEpisodeDetails(show) {
+    if (show.isCompleted) return;
+
+    try {
+        const response = await fetch(`${BASE_URL}/tv/${show.id}/season/${show.currentSeason}/episode/${show.currentEpisode}?api_key=${API_KEY}&language=pt-BR`);
+        
+        if (response.ok) {
+            const episodeData = await response.json();
+            show.episodeName = episodeData.name || `Episódio ${show.currentEpisode}`;
+        } else if (response.status === 404) {
+            // Se o episódio 1 da próxima temporada não existir, tenta ver se a série acabou
+            if (show.currentEpisode === 1) {
+                show.isCompleted = true;
+                show.episodeName = "Todos os episódios assistidos! 🎉";
+            } else {
+                // Se o próximo episódio não existe nesta temporada, pula para a próxima temporada, episódio 1
+                show.currentSeason++;
+                show.currentEpisode = 1;
+                await fetchEpisodeDetails(show);
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao buscar detalhes do episódio:", error);
+        show.episodeName = "Clique em +1 para atualizar";
+    }
+    saveData();
+}
+
+// AVANÇAR UM EPISÓDIO (+1)
+window.watchEpisode = async function(showId) {
+    const show = myShows.find(s => s.id === showId);
+    if (!show) return;
+
+    if (show.isCompleted) {
+        // Resetar caso queira reassistir
+        show.currentSeason = 1;
+        show.currentEpisode = 1;
+        show.isCompleted = false;
+        show.episodeName = "Carregando...";
+        await fetchEpisodeDetails(show);
+        renderMyShows();
+        return;
+    }
+
+    // Passa de forma otimista para o próximo número de episódio
+    show.currentEpisode++;
+    show.episodeName = "Atualizando...";
+    renderMyShows(); // Atualiza o texto na tela enquanto baixa da API
+
+    // Verifica se o episódio existe ou se muda de temporada
+    await fetchEpisodeDetails(show);
+    renderMyShows();
+};
+
+// RENDERIZAR MINI-PAINEL ESTILO TV TIME
 function renderMyShows() {
     myShowsContainer.innerHTML = '';
 
     if (myShows.length === 0) {
-        myShowsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 40px; font-size: 15px;">Sua lista está vazia. Use a barra acima para encontrar e adicionar séries!</p>';
+        myShowsContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 40px; font-size: 15px;">Sua lista está vazia. Adicione séries acima!</p>';
         return;
     }
 
     myShows.forEach(show => {
-        const progressPercent = show.totalEpisodes > 0 ? (show.currentEpisode / show.totalEpisodes) * 100 : 0;
-        const isCompleted = show.currentEpisode === show.totalEpisodes && show.totalEpisodes > 0;
-
         const card = document.createElement('div');
         card.className = 'show-card';
+        
+        // Formata o código do episódio no estilo S01E05 (Season 1, Episode 5)
+        const seasonCode = String(show.currentSeason).padStart(2, '0');
+        const episodeCode = String(show.currentEpisode).padStart(2, '0');
+        const fullCode = `T${seasonCode}E${episodeCode}`;
+
         card.innerHTML = `
             <button class="delete-btn" onclick="deleteShow(${show.id})">Remover</button>
-            <img class="show-poster" src="${show.poster}" alt="Poster de ${show.title}" onerror="this.src='https://via.placeholder.com/100x150?text=Sem+Foto'">
+            <img class="show-poster" src="${show.poster}" alt="Poster">
             <div class="show-info">
                 <div>
                     <h3 class="show-title">${show.title}</h3>
-                    <div class="show-meta">Progresso: ${show.currentEpisode}/${show.totalEpisodes} episódios</div>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                    
+                    <!-- Novo painel de info do episódio -->
+                    <div class="tvtime-episode-box">
+                        ${show.isCompleted ? '' : `<span class="ep-code">${fullCode}</span>`}
+                        <span class="ep-name">${show.episodeName}</span>
                     </div>
                 </div>
-                <div class="action-zone">
+                
+                <div class="action-zone" style="margin-top: 15px;">
                     <span class="episode-badge">
-                        ${isCompleted ? '🎉 Maratonada!' : `Faltam: <strong>${show.totalEpisodes - show.currentEpisode}</strong>`}
+                        ${show.isCompleted ? '🎉 Completa!' : `Próximo episódio`}
                     </span>
-                    <button class="check-btn ${isCompleted ? 'watched' : ''}" onclick="watchEpisode(${show.id})">
-                        ${isCompleted ? '✓' : '+1'}
+                    <button class="check-btn ${show.isCompleted ? 'watched' : ''}" onclick="watchEpisode(${show.id})">
+                        ${show.isCompleted ? '✓' : '+1'}
                     </button>
                 </div>
             </div>
@@ -151,35 +186,26 @@ function renderMyShows() {
     });
 }
 
-// --- FUNÇÕES DE CONTROLE ---
-
-// Incrementa os episódios assistidos (+1)
-window.watchEpisode = function(showId) {
-    const show = myShows.find(s => s.id === showId);
-    if (show) {
-        if (show.currentEpisode < show.totalEpisodes) {
-            show.currentEpisode++;
-        } else {
-            show.currentEpisode = 0; // Reseta o progresso caso queira reassistir
-        }
-        saveData();
-        renderMyShows();
-    }
-};
-
-// Remove a série selecionada da lista do usuário
 window.deleteShow = function(showId) {
-    if(confirm("Tem certeza que deseja remover esta série da sua lista?")) {
+    if(confirm("Deseja remover esta série?")) {
         myShows = myShows.filter(s => s.id !== showId);
         saveData();
         renderMyShows();
     }
 };
 
-// Salva o estado atual no LocalStorage
 function saveData() {
-    localStorage.setItem('api_tv_time_data', JSON.stringify(myShows));
+    localStorage.setItem('maratona_tv_time_v2', JSON.stringify(myShows));
 }
 
-// Executa a renderização inicial assim que a página abre
-renderMyShows();
+// Inicializa e carrega os nomes dos episódios salvos se necessário
+async function init() {
+    for (let show of myShows) {
+        if (show.episodeName === "Carregando informações..." || show.episodeName === "Atualizando...") {
+            await fetchEpisodeDetails(show);
+        }
+    }
+    renderMyShows();
+}
+
+init();
