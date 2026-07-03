@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
+    <link rel="stylesheet" href="./src/css/reset.css">
+    <link rel="stylesheet" href="./src/css/style.css">    
+    <link rel="stylesheet" href="./src/css/responsive.css">
+    <title>Document</title>
+</head>
+<body>
+
+    <header>
+        <h1>MARATONA</h1>
+        <p style="color: var(--text-secondary); margin: 0;">Conectado à API do TMDB</p>
+    </header>
+
+    <!-- Área de Pesquisa -->
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Digite o nome de uma série (ex: The Boys, Breaking Bad)...">
+        <button onclick="searchShow()">Buscar</button>
+    </div>
+
+    <main>
+        <!-- Container de Resultados da Busca -->
+        <div id="search-results-section" style="display: none;">
+            <h2 class="section-title">Resultados da Busca</h2>
+            <div class="search-results" id="search-results-container"></div>
+        </div>
+
+        <!-- Minha Lista Principal -->
+        <h2 class="section-title">Minha Lista</h2>
+        <div class="show-list" id="my-shows-container"></div>
+    </main>
+
+    <script src="./src/js/index.js"></script>
+</body>
+</html>

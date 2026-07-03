@@ -1,0 +1,5 @@
+@media (max-width: 600px) {
+            .show-card { flex-direction: column; align-items: center; text-align: center; }
+            .action-zone { flex-direction: column; gap: 15px; }
+            .delete-btn { top: auto; bottom: 15px; right: 20px; }
+        }
