@@ -30,7 +30,7 @@ async function searchShow() {
     const query = searchInput.value.trim();
     if (!query) return;
 
-    if (API_KEY === 'a6e95254254e0bf24eb333b2b1fbf262') {
+    if (API_KEY === 'AQUI_VAI_A_SUA_CHAVE_DO_TMDB') {
         alert('Por favor, configure sua chave da API do TMDB no arquivo app.js!');
         return;
     }
