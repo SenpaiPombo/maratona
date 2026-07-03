@@ -54,6 +54,37 @@ h2.section-title {
     gap: 10px;
 }
 
+/* --- ESTILO TV TIME: EXIBIÇÃO DE EPISÓDIOS --- */
+.tvtime-episode-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #262626;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.ep-code {
+    background-color: var(--accent-color);
+    color: #000;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.ep-name {
+    font-size: 14px;
+    color: #dfdfdf;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .search-container input {
     flex-grow: 1;
     background-color: var(--card-bg);
